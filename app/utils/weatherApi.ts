@@ -1,6 +1,5 @@
 // app/utils/weatherApi.ts
 const API_KEY = process.env.NEXT_PUBLIC_OPENWEATHERMAP_API_KEY;
-console.log(API_KEY)
 const BASE_URL = 'https://api.openweathermap.org/data/2.5/weather';
 
 export async function fetchWeatherData(city: string) {
