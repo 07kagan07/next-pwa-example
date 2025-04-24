@@ -27,7 +27,7 @@ export default function HomePage() {
       window.removeEventListener('online', handleOnline);
       window.removeEventListener('offline', handleOffline);
     };
-  }, [isOffline]); // isOffline değiştiğinde tekrar çalışır
+  }, [isOffline]);
 
   useEffect(() => {
     // Online duruma geçildiğinde önbelleği temizle (isteğe bağlı)
@@ -41,15 +41,27 @@ export default function HomePage() {
   };
 
   const handleSearch = async () => {
+    if (!city) {
+      setError('Lütfen bir şehir adı girin.');
+      return;
+    }
+
     setError(null);
-    const data = await fetchWeatherData(city);
-    if (data && !data.error) {
-      setWeatherData(data);
-      // Başarılı arama sonrası veriyi önbelleğe kaydetmek için bir fonksiyon çağırabilirsiniz
-      saveWeatherDataToCache(city, data);
+
+    if (isOffline) {
+      await loadCachedData();
     } else {
-      setWeatherData(null);
-      setError(data?.error || 'Şehir bulunamadı veya hava durumu bilgisi alınamadı.');
+      try {
+        const data = await fetchWeatherData(city);
+        if (data) {
+          setWeatherData(data);
+          saveWeatherDataToCache(city, data);
+        } else {
+          setError('Şehir bulunamadı veya hava durumu bilgisi alınamadı.');
+        }
+      } catch (error) {
+        setError('Hava durumu bilgisi alınırken bir hata oluştu.');
+      }
     }
   };
 
@@ -58,14 +70,9 @@ export default function HomePage() {
       try {
         const cache = await caches.open('hava-nasil-weather-data-cache-v1');
         const keys = await cache.keys();
-        // En son aranan şehrin verisini bulmaya çalış
-        const latestRequest = keys.reduce<Request | null>((latest, current) => {
-          // Basit bir URL karşılaştırması yapıyoruz, daha karmaşık bir mantık gerekebilir
-          if (current.url.includes('openweathermap.org/data/2.5/weather')) {
-            return current;
-          }
-          return latest;
-        }, null);
+        const latestRequest = keys.find((key) =>
+          key.url.includes('api.openweathermap.org/data/2.5/weather')
+        );
 
         if (latestRequest) {
           const cachedResponse = await cache.match(latestRequest);
